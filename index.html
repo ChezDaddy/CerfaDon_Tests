@@ -1076,7 +1076,7 @@ async function enterApp(userId) {
 }
 
 // Admin switching to a café view without logging out
-function adminSwitchCafe(cafeId) {
+async function adminSwitchCafe(cafeId) {
   if (!cafeId) return;
   const cafe = store.cafes.find(c=>c.id===cafeId);
   if (!cafe) return;
