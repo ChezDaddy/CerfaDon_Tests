@@ -1752,7 +1752,7 @@ async function generateCerfaPDF(cafe, receipt) {
     try {
       const form2 = pdfDoc.getForm();
       form2.getCheckBox('checkbox_22sddw').uncheck();
-      // NE PAS sélectionner radio_group_12kjqn — "Association loi 1901" est cochée manuellement ci-dessous
+      // Ne pas sélectionner radio_group_12kjqn : "Association loi 1901" est dessinée manuellement
       form2.flatten();
     } catch(e) { /* flatten partiel attendu */ }
     // Corrections VISUELLES après flatten — coordonnées en ESPACE VISUEL de la page
@@ -1761,10 +1761,13 @@ async function generateCerfaPDF(cafe, receipt) {
     // 1. Effacer "Musée de France" pré-sélectionné (y_visual = 408+77 = 485)
     pg1.drawRectangle({ x: 61, y: 479, width: 14, height: 14,
       color: rgb(1,1,1), borderColor: rgb(1,1,1), borderWidth: 0 });
-    // 2. Effacer "Organisme sauvegarde" pré-coché (checkbox widget = visual coords)
+    // 2. Effacer "Fondation universitaire ou fondation partenariale" (y_visual ≈ 462)
+    pg1.drawRectangle({ x: 61, y: 456, width: 14, height: 14,
+      color: rgb(1,1,1), borderColor: rgb(1,1,1), borderWidth: 0 });
+    // 3. Effacer "Organisme sauvegarde" pré-coché (checkbox widget = visual coords)
     pg1.drawRectangle({ x: 32, y: 102, width: 16, height: 17,
       color: rgb(1,1,1), borderColor: rgb(1,1,1), borderWidth: 0 });
-    // 3. Cocher "Association loi 1901" (y_visual mesuré sur template dpi=200, img_y≈950)
+    // 4. Cocher "Association loi 1901" (y_visual mesuré sur template dpi=200, img_y≈950)
     pg1.drawCircle({ x: 68, y: 500, size: 3.2,
       color: rgb(0.05,0.05,0.05), borderColor: rgb(0.05,0.05,0.05), borderWidth: 0 });
 
@@ -1898,80 +1901,68 @@ async function generateCerfaEntreprisePDF(cafe, receipt) {
     }
 
     // Dénomination org (pas de champ nommé)
-    // rect a4 est à y_from_top=203 → la Dénomination est JUSTE AU-DESSUS à ~190
     drawTxt(p1, 30, h1-190, org.nom || cafe.nom, 8);
 
-    // SIREN org — field a4 (y_from_top=198 dans la ligne SIREN)
+    // SIREN org — field a4
     setField('a4',  org.siren || '');
     // N° adresse — field a5
     setField('a5',  org.num || '');
     // Rue — field a6
     setField('a6',  org.rue || '');
-    // Code postal et Commune : PAS de champ nommé → drawText
-    // CP row: 232.6-244.8pt from top → y_from_bot = h1-239=603
-    drawTxt(p1,  57, h1-239, org.cp || '', 8);       // CP (aligné avec a5 x=57)
-    drawTxt(p1, 191, h1-239, org.commune || '', 8);  // Commune (après label)
-    // PAYS — field a9 (y_from_top=253 → dans la ligne Pays 244.8-270.4)
+    // Code postal et Commune : pas de champ nommé → drawText
+    // Ligne CP/Commune recalée : y_from_top ≈ 228 → y_from_bot = h1-228
+    drawTxt(p1,  57, h1-228, org.cp || '', 8);
+    drawTxt(p1, 191, h1-228, org.commune || '', 8);
+    // PAYS
     setField('a9',  org.pays || 'France');
-    // OBJET — field a10 (y_from_top=261 → dans la ligne Objet)
+    // OBJET
     setField('a10', org.objet || '');
 
-    // ── CASE PRINCIPALE "Oeuvre ou organisme d'interet general" ──────
-    // Grande checkbox en regard du premier bloc (y_from_bot = h1-278)
-    drawTxt(p1, 33, h1-278, 'X', 9, true);
-    // Association loi 1901 radio button (sous-option dans ce bloc)
-    // img_y~348 → y_from_top = 293pt → y_from_bot = 841.9-293=549
-    p1.drawCircle({ x: 68, y: 549, size: 3.0,
+    // ── CASE PRINCIPALE "Oeuvre ou organisme" ────────────────────
+    // Checkbox carrée : y_from_top ≈ 270 → y_from_bot = h1-272
+    p1.drawText('X', { x: 33, y: h1-272, size: 9, font: helveticaB, color: rgb(0.05,0.05,0.05) });
+    // Radio "Association loi 1901" : 1ère sous-option, y_from_top ≈ 304 → y_from_bot = h1-307
+    p1.drawCircle({ x: 68, y: h1-307, size: 3.0,
       color: rgb(0.05,0.05,0.05), borderColor: rgb(0.05,0.05,0.05), borderWidth: 0 });
 
     // ── PAGE 2 : ENTREPRISE DONATRICE ────────────────────────────
-    // Tous les champs nommés → setTextField (positions garanties par le template)
-    setField('b4',  ent.denomination || '');    // Dénomination entreprise
+    setField('b4',  ent.denomination || '');    // Dénomination
     setField('b5',  ent.formeJuridique || '');  // Forme juridique
-    // SIREN entreprise — utiliser les deux approches pour fiabilité
-    try { setField('b6', ent.siren || ''); } catch(e) {}
-    // Fallback drawText systématique (les deux ne se superposent pas si setField fonctionne)
-    drawTxt(p2, 125, h2-228, ent.siren || '', 8);
+    // SIREN : setField uniquement — pas de drawText fallback pour éviter le doublon
+    try { setField('b6', ent.siren || ''); } catch(e) {
+      drawTxt(p2, 125, h2-228, ent.siren || '', 8); // fallback si champ absent
+    }
     setField('b7',  ent.num || '');             // N° adresse
     setField('b8',  ent.rue || '');             // Rue
     setField('b9',  ent.cp || '');              // Code postal
     setField('b10', ent.commune || '');         // Commune
 
     // ── DONS ET VERSEMENTS ────────────────────────────────────────
-    // Versements (montant + toutes lettres)
     setField('b15', montant);                   // Montant versements €
-    setField('b16', lettres);                   // Toutes lettres (partie droite)
-    setField('b17', '');                        // Ligne 2 toutes lettres (vide)
+    // Toutes lettres sur la ligne 2 (garantit que tout rentre)
+    setField('b16', '');
+    setField('b17', lettres);
     // Description des biens
     setField('b13', ent.description || 'Don a une association');
-    // Mode de versement (checkbox) — dessiner X dans la bonne case
-    // CAC cases pour mode versement sont sur p2 à des positions connues
-    // Remise espèces: dessin X à ~x=50, Chèque: ~x=165, Virement: ~x=290
-    // Ces positions sont relatives aux "Forme des versements" checkboxes
-    // rect b15 est à y=361-377 → mode versement est à y≈430 area
-    // Pour simplifier: drawText X
-    // Mode versement: cases □ à y_from_bot≈337 (b17 range 339-355, cases dessous)
-    // Mesure img zoom: X à x=272 doit aller dans □ Virement
+    // Mode de versement
     const modeX2 = { especes: 33, cheque: 155, virement: 272 };
     if (receipt.type && modeX2[receipt.type]) {
       drawTxt(p2, modeX2[receipt.type], h2-520, 'X', 8, true);
     }
-    // Montant total (= montant versements pour don simple)
-    setField('b18', montant);                   // Total €
-    setField('b19', lettres);                   // Total lettres (partie droite)
-    setField('b20', '');                        // Total lettres ligne 2
+    // Montant total
+    setField('b18', montant);
+    setField('b19', '');
+    setField('b20', lettres);
 
-    // Date période:
-    // "du ou le" → pas de champ nommé → drawText
-    // y_from_top=598.5 → y_from_bot=h2-598.5=243.4
-    drawTxt(p2,  57, h2-600, dateJJ,   8);  // du ou le: JJ
-    drawTxt(p2,  78, h2-600, dateMM,   8);  // MM
-    drawTxt(p2, 100, h2-600, dateAAAA, 8);  // AAAA
-    // "au" date → champs nommés b24,b25,b26
-    setField('b24', dateJJ);    // au: JJ
-    setField('b25', dateMM);    // MM
-    setField('b26', dateAAAA);  // AAAA
-    // Date et signature "Le JJ/MM/AAAA"
+    // Date "du ou le" recalée — y_from_top ≈ 596 → y_from_bot = h2-596
+    drawTxt(p2,  95, h2-596, dateJJ,   8);
+    drawTxt(p2, 116, h2-596, dateMM,   8);
+    drawTxt(p2, 138, h2-596, dateAAAA, 8);
+    // "au" date
+    setField('b24', dateJJ);
+    setField('b25', dateMM);
+    setField('b26', dateAAAA);
+    // Date et signature
     setField('b27', `${dateJJ}/${dateMM}/${dateAAAA}`);
 
     // Flatten form so all fields are rendered as static content
