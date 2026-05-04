@@ -262,7 +262,7 @@
       <button class="btn btn-primary" onclick="login()">Connexion</button>
     </div>
     <div style="text-align:center;padding:14px 0 4px;border-top:1px solid rgba(0,0,0,0.07);margin-top:8px;">
-      <span style="font-size:11px;color:#B0A898;letter-spacing:0.5px;">v1.1.0 — Supabase</span>
+      <span style="font-size:11px;color:#B0A898;letter-spacing:0.5px;">v2.0 — Supabase</span>
     </div>
   </div>
 </div>
@@ -1769,7 +1769,11 @@ async function generateCerfaPDF(cafe, receipt) {
     // 3. Effacer "Organisme sauvegarde" pré-coché (checkbox widget sans décalage)
     pg1.drawRectangle({ x: 32, y: 102, width: 16, height: 17,
       color: rgb(1,1,1), borderColor: rgb(1,1,1), borderWidth: 0 });
-    // 4. Cocher "Association loi 1901" — rect(64,342,72,350) → centre y_bot=842-346=496
+    // 4. Effacer le cercle pré-coché d'"Association loi 1901" (présent dans le template)
+    //    rect(64,342,72,350) → centre x=68, y_bot=842-346=496 → rectangle blanc sur le cercle
+    pg1.drawRectangle({ x: 61, y: 489, width: 15, height: 15,
+      color: rgb(1,1,1), borderColor: rgb(1,1,1), borderWidth: 0 });
+    // 5. Redessiner "Association loi 1901" coché
     pg1.drawCircle({ x: 68, y: 496, size: 3.5,
       color: rgb(0.05,0.05,0.05), borderColor: rgb(0.05,0.05,0.05), borderWidth: 0 });
 
@@ -1922,7 +1926,8 @@ async function generateCerfaEntreprisePDF(cafe, receipt) {
 
     // ── CASE PRINCIPALE "Oeuvre ou organisme" ────────────────────
     // CAC1 exact : rect(33.903, 375.275, 41.331, 382.584) → centre x=37.6, y_bot=463.0
-    p1.drawText('X', { x: 34, y: 463, size: 8, font: helveticaB, color: rgb(0.05,0.05,0.05) });
+    // 'X' size=7 → dessiné depuis baseline/left → décalage -1 en x, -1 en y pour centrage
+    p1.drawText('X', { x: 33, y: 462, size: 7, font: helveticaB, color: rgb(0.05,0.05,0.05) });
     // Radio "Association loi 1901" — CAC0#1 exact : rect(55.921,339.041,63.203,346.407) → centre x=59.6, y_bot=499.2
     p1.drawCircle({ x: 59.6, y: 499, size: 3.0,
       color: rgb(0.05,0.05,0.05), borderColor: rgb(0.05,0.05,0.05), borderWidth: 0 });
