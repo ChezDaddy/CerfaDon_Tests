@@ -1752,23 +1752,25 @@ async function generateCerfaPDF(cafe, receipt) {
     try {
       const form2 = pdfDoc.getForm();
       form2.getCheckBox('checkbox_22sddw').uncheck();
-      // Ne pas sélectionner radio_group_12kjqn : "Association loi 1901" est dessinée manuellement
+      // Ne pas sélectionner radio_group_12kjqn — "Association loi 1901" dessinée manuellement
       form2.flatten();
     } catch(e) { /* flatten partiel attendu */ }
-    // Corrections VISUELLES après flatten — coordonnées en ESPACE VISUEL de la page
-    // NB: les radio widgets ont un décalage de +77pt vs leur /Rect AcroForm
+    // Corrections VISUELLES après flatten
+    // NB coordonnées exactes extraites du template AcroForm (pymupdf) :
+    //   radio Value_aftr = rect(64,391,72,399), avec décalage visuel +77pt → y_bot = 842-(391+77) = 374
+    //   radio Assoc1901  = rect(64,342,72,350)                              → y_bot = 842-342 = 500
     const pg1 = pdfDoc.getPages()[0];
-    // 1. Effacer "Musée de France" pré-sélectionné (y_visual = 408+77 = 485)
-    pg1.drawRectangle({ x: 61, y: 479, width: 14, height: 14,
+    // 1. Effacer "Musée de France" pré-sélectionné — rect(64,408,72,416)+77 → y_bot≈479
+    pg1.drawRectangle({ x: 60, y: 473, width: 16, height: 16,
       color: rgb(1,1,1), borderColor: rgb(1,1,1), borderWidth: 0 });
-    // 2. Effacer "Fondation universitaire ou fondation partenariale" (y_visual ≈ 462)
-    pg1.drawRectangle({ x: 61, y: 456, width: 14, height: 14,
+    // 2. Effacer "Fondation universitaire" (Value_aftr) — rect(64,391,72,399)+77 → y_bot≈451
+    pg1.drawRectangle({ x: 60, y: 445, width: 16, height: 16,
       color: rgb(1,1,1), borderColor: rgb(1,1,1), borderWidth: 0 });
-    // 3. Effacer "Organisme sauvegarde" pré-coché (checkbox widget = visual coords)
+    // 3. Effacer "Organisme sauvegarde" pré-coché (checkbox widget sans décalage)
     pg1.drawRectangle({ x: 32, y: 102, width: 16, height: 17,
       color: rgb(1,1,1), borderColor: rgb(1,1,1), borderWidth: 0 });
-    // 4. Cocher "Association loi 1901" (y_visual mesuré sur template dpi=200, img_y≈950)
-    pg1.drawCircle({ x: 68, y: 500, size: 3.2,
+    // 4. Cocher "Association loi 1901" — rect(64,342,72,350) → centre y_bot=842-346=496
+    pg1.drawCircle({ x: 68, y: 496, size: 3.5,
       color: rgb(0.05,0.05,0.05), borderColor: rgb(0.05,0.05,0.05), borderWidth: 0 });
 
     // ── PAGE 2 : DONATEUR ──
@@ -1900,64 +1902,68 @@ async function generateCerfaEntreprisePDF(cafe, receipt) {
         font: bold ? helveticaB : helvetica, color: rgb(0.05,0.05,0.05) });
     }
 
-    // Dénomination org (pas de champ nommé)
+    // Dénomination org (pas de champ nommé — drawText)
     drawTxt(p1, 30, h1-190, org.nom || cafe.nom, 8);
 
     // SIREN org — field a4
-    setField('a4',  org.siren || '');
+    setField('a4', org.siren || '');
     // N° adresse — field a5
-    setField('a5',  org.num || '');
+    setField('a5', org.num || '');
     // Rue — field a6
-    setField('a6',  org.rue || '');
-    // Code postal et Commune : pas de champ nommé → drawText
-    // Ligne CP/Commune recalée : y_from_top ≈ 228 → y_from_bot = h1-228
-    drawTxt(p1,  57, h1-228, org.cp || '', 8);
-    drawTxt(p1, 191, h1-228, org.commune || '', 8);
-    // PAYS
-    setField('a9',  org.pays || 'France');
-    // OBJET
+    setField('a6', org.rue || '');
+    // CP — field a7 (champ nommé, rect x=110.3, y_top=236.3)
+    setField('a7', org.cp || '');
+    // Commune — field a8 (champ nommé, rect x=242.2, y_top=234.9)
+    setField('a8', org.commune || '');
+    // Pays — field a9
+    setField('a9', org.pays || 'France');
+    // Objet — field a10
     setField('a10', org.objet || '');
 
     // ── CASE PRINCIPALE "Oeuvre ou organisme" ────────────────────
-    // Checkbox carrée : y_from_top ≈ 270 → y_from_bot = h1-272
-    p1.drawText('X', { x: 33, y: h1-272, size: 9, font: helveticaB, color: rgb(0.05,0.05,0.05) });
-    // Radio "Association loi 1901" : 1ère sous-option, y_from_top ≈ 304 → y_from_bot = h1-307
-    p1.drawCircle({ x: 68, y: h1-307, size: 3.0,
+    // CAC1 exact : rect(33.903, 375.275, 41.331, 382.584) → centre x=37.6, y_bot=463.0
+    p1.drawText('X', { x: 34, y: 463, size: 8, font: helveticaB, color: rgb(0.05,0.05,0.05) });
+    // Radio "Association loi 1901" — CAC0#1 exact : rect(55.921,339.041,63.203,346.407) → centre x=59.6, y_bot=499.2
+    p1.drawCircle({ x: 59.6, y: 499, size: 3.0,
       color: rgb(0.05,0.05,0.05), borderColor: rgb(0.05,0.05,0.05), borderWidth: 0 });
 
     // ── PAGE 2 : ENTREPRISE DONATRICE ────────────────────────────
-    setField('b4',  ent.denomination || '');    // Dénomination
-    setField('b5',  ent.formeJuridique || '');  // Forme juridique
-    // SIREN : setField uniquement — pas de drawText fallback pour éviter le doublon
+    setField('b4', ent.denomination || '');    // Dénomination
+    setField('b5', ent.formeJuridique || '');  // Forme juridique
+    // SIREN — setField uniquement, pas de drawText pour éviter doublon
     try { setField('b6', ent.siren || ''); } catch(e) {
-      drawTxt(p2, 125, h2-228, ent.siren || '', 8); // fallback si champ absent
+      drawTxt(p2, 125, h2-221, ent.siren || '', 8);
     }
-    setField('b7',  ent.num || '');             // N° adresse
-    setField('b8',  ent.rue || '');             // Rue
-    setField('b9',  ent.cp || '');              // Code postal
-    setField('b10', ent.commune || '');         // Commune
+    setField('b7',  ent.num || '');     // N° adresse
+    setField('b8',  ent.rue || '');     // Rue
+    setField('b9',  ent.cp || '');      // Code postal
+    setField('b10', ent.commune || ''); // Commune
 
     // ── DONS ET VERSEMENTS ────────────────────────────────────────
-    setField('b15', montant);                   // Montant versements €
-    // Toutes lettres sur la ligne 2 (garantit que tout rentre)
-    setField('b16', '');
-    setField('b17', lettres);
-    // Description des biens
+    setField('b15', montant);   // Montant versements €
+    setField('b16', '');        // Ligne 1 lettres : vide
+    setField('b17', lettres);   // Ligne 2 lettres : toutes lettres (garantit espace)
     setField('b13', ent.description || 'Don a une association');
-    // Mode de versement
-    const modeX2 = { especes: 33, cheque: 155, virement: 272 };
-    if (receipt.type && modeX2[receipt.type]) {
-      drawTxt(p2, modeX2[receipt.type], h2-520, 'X', 8, true);
+
+    // Mode de versement — coordonnées exactes des CAC2/3/4 :
+    // CAC2 Especes  rect(34.888,516.137,42.197,523.446) → centre x=38.5, y_bot=322.1
+    // CAC3 Cheque   rect(169.378,516.137,176.688,523.446) → centre x=173.0, y_bot=322.1
+    // CAC4 Virement rect(254.106,516.137,261.415,523.446) → centre x=257.8, y_bot=322.1
+    const modeCenters = { especes: 38.5, cheque: 173.0, virement: 257.8 };
+    if (receipt.type && modeCenters[receipt.type]) {
+      p2.drawText('X', { x: modeCenters[receipt.type]-3, y: 319, size: 8,
+        font: helveticaB, color: rgb(0.05,0.05,0.05) });
     }
+
     // Montant total
     setField('b18', montant);
     setField('b19', '');
     setField('b20', lettres);
 
-    // Date "du ou le" recalée — y_from_top ≈ 596 → y_from_bot = h2-596
-    drawTxt(p2,  95, h2-596, dateJJ,   8);
-    drawTxt(p2, 116, h2-596, dateMM,   8);
-    drawTxt(p2, 138, h2-596, dateAAAA, 8);
+    // Date "du ou le" — champs nommés b21/b22/b23 (rect y_top=598.5)
+    setField('b21', dateJJ);
+    setField('b22', dateMM);
+    setField('b23', dateAAAA);
     // "au" date
     setField('b24', dateJJ);
     setField('b25', dateMM);
@@ -1965,10 +1971,12 @@ async function generateCerfaEntreprisePDF(cafe, receipt) {
     // Date et signature
     setField('b27', `${dateJJ}/${dateMM}/${dateAAAA}`);
 
-    // Flatten form so all fields are rendered as static content
+    // Flatten form
     form.flatten();
 
-    // Signature image
+    // Signature image — cadre date/sig : b27 rect=(347.6,619.7,429.1,635.5)
+    // Encart "Date et signature" à droite, largeur ~248pt (347.6→595.3), y 619→841
+    // Placer la signature bien dans le cadre, décalée à droite
     if (cafe.signature) {
       try {
         const sigData  = cafe.signature.split(',')[1];
@@ -1976,10 +1984,13 @@ async function generateCerfaEntreprisePDF(cafe, receipt) {
         let sigImg;
         try { sigImg = await pdfDoc.embedPng(sigBytes); }
         catch(e) { sigImg = await pdfDoc.embedJpg(sigBytes); }
-        const sigH = 30, sigW = Math.min(120, sigH * sigImg.width / sigImg.height);
-        // Signature box: field b27 is at rect=(348,206,429,222) = date/sig area
-        // Place signature image below date in the right box
-        p2.drawImage(sigImg, { x: 310, y: h2 - 650, width: sigW, height: sigH });
+        const sigH = 34;
+        const sigW = Math.min(180, sigH * sigImg.width / sigImg.height);
+        // Encart sig : x de 348 à 595 (largeur 247), y_bot de 172 à 222 (hauteur 50)
+        // Centre horizontal dans l'encart, sous la date b27
+        const sigX = 348 + (247 - sigW) / 2;
+        const sigY = 172; // y_bot bas de l'encart sig
+        p2.drawImage(sigImg, { x: sigX, y: sigY, width: sigW, height: sigH });
       } catch(e) { console.warn('Sig embed failed:', e); }
     }
 
