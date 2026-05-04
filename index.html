@@ -1770,8 +1770,8 @@ async function generateCerfaPDF(cafe, receipt) {
     pg1.drawRectangle({ x: 32, y: 102, width: 16, height: 17,
       color: rgb(1,1,1), borderColor: rgb(1,1,1), borderWidth: 0 });
     // 4. Effacer le cercle pré-coché d'"Association loi 1901" (présent dans le template)
-    //    rect(64,342,72,350) → centre x=68, y_bot=842-346=496 → rectangle blanc sur le cercle
-    pg1.drawRectangle({ x: 61, y: 489, width: 15, height: 15,
+    //    rect(64,342,72,350) → grand rectangle blanc de sécurité couvrant [338..358]
+    pg1.drawRectangle({ x: 58, y: 484, width: 20, height: 20,
       color: rgb(1,1,1), borderColor: rgb(1,1,1), borderWidth: 0 });
     // 5. Redessiner "Association loi 1901" coché
     pg1.drawCircle({ x: 68, y: 496, size: 3.5,
@@ -1906,8 +1906,17 @@ async function generateCerfaEntreprisePDF(cafe, receipt) {
         font: bold ? helveticaB : helvetica, color: rgb(0.05,0.05,0.05) });
     }
 
-    // Dénomination org (pas de champ nommé — drawText)
-    drawTxt(p1, 30, h1-190, org.nom || cafe.nom, 8);
+    // Dénomination org — centrée dans le champ a2 (x=209.9..559.7, largeur=349.8)
+    // y_bot du champ a2 : H-180.68 ≈ 661
+    const nomOrg = org.nom || cafe.nom || '';
+    const nomWidth = helveticaB.widthOfText ? 0 : nomOrg.length * 4.5; // approx
+    const a2Left = 209.9, a2Right = 559.7, a2Width = a2Right - a2Left;
+    // Centrage horizontal : x = a2Left + (a2Width - textWidth) / 2
+    // On utilise une taille 8 → largeur approx 4.5pt/char pour Helvetica
+    const nomLen = nomOrg.length;
+    const nomApproxW = nomLen * 4.5;
+    const nomX = nomApproxW < a2Width ? a2Left + (a2Width - nomApproxW) / 2 : a2Left;
+    drawTxt(p1, nomX, h1-180, nomOrg, 8, true);
 
     // SIREN org — field a4
     setField('a4', org.siren || '');
