@@ -870,6 +870,8 @@ async function loadFromSupabase() {
                       filename:       r.filename,
                       pdf_path:       r.pdf_path,
                       numero_ordre:   r.numero_ordre || '',
+                      donType:        r.don_type || '',
+                      entreprise:     r.entreprise ? (typeof r.entreprise === 'string' ? JSON.parse(r.entreprise) : r.entreprise) : null,
                     }))
   }));
 
@@ -944,6 +946,8 @@ async function saveReceipt(cafeId, receipt) {
     filename:       receipt.filename  || '',
     pdf_path:       receipt.pdf_path  || null,
     numero_ordre:   receipt.numero_ordre || '',
+    don_type:       receipt.donType   || '',
+    entreprise:     receipt.entreprise ? JSON.stringify(receipt.entreprise) : null,
   };
   try {
     await sb.upsert('receipts', row);
