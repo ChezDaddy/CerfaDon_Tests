@@ -895,10 +895,29 @@ async function loadFromSupabase() {
   setOnlineStatus(true);
 }
 
+// Mapping explicite des préfixes café (3 lettres)
+const CAFE_PREFIXES = {
+  'croix-rousse': 'CRX', 'croixrousse': 'CRX', 'croix rousse': 'CRX',
+  'caluire': 'CLR',
+  'autun': 'AUT',
+  'la madeleine': 'LMD', 'lamadeleine': 'LMD',
+  'douai': 'DOU',
+  'clermont-ferrand': 'CFD', 'clermontferrand': 'CFD', 'clermont ferrand': 'CFD',
+  'ste foy': 'SFL', 'sainte foy': 'SFL', 'ste foy lès lyon': 'SFL', 'ste foy les lyon': 'SFL',
+};
+function getCafePrefix(cafeNom) {
+  const key = (cafeNom || '').toLowerCase().trim();
+  for (const [k, v] of Object.entries(CAFE_PREFIXES)) {
+    if (key.includes(k)) return v;
+  }
+  // Fallback : 3 premières lettres
+  return (cafeNom || '???').replace(/[^A-Za-z]/g, '').substring(0, 3).toUpperCase().padEnd(3, 'X');
+}
+
 // Génère le numéro d'ordre : 3 lettres café + année + P/E + rang 6 chiffres (global par type)
-// Exemples : CAL2026P000001 / SFL2026E000002
+// Exemples : CLR2026P000001 / SFL2026E000002
 function generateNumeroOrdre(cafeNom, year, type) {
-  const prefix = (cafeNom || '???').replace(/[^A-Za-z]/g, '').substring(0, 3).toUpperCase().padEnd(3, 'X');
+  const prefix = getCafePrefix(cafeNom);
   const letter = type === 'entreprise' ? 'E' : 'P';
   const allReceipts = store.cafes.flatMap(c => c.receipts || []);
   const rang = allReceipts.filter(r => (r.donType === 'entreprise') === (type === 'entreprise')).length + 1;
@@ -1254,21 +1273,26 @@ function exportReceiptsCSV() {
   if (!all.length) { alert('Aucun reçu à exporter.'); return; }
 
   const BOM = '﻿'; // UTF-8 BOM for Excel
-  const headers = ['Café','Date','Nom','Prénom','Adresse','CP','Commune','Email','Montant (EUR)','Montant en lettres','Mode de versement','N° reçu'];
-  const rows = all.map(r => [
-    r.cafeName,
-    formatDate(r.date),
-    r.nom||'',
-    r.prenom||'',
-    r.adresse||'',
-    r.cp||'',
-    r.commune||'',
-    r.email||'',
-    String(r.montant||0).replace('.',','),
-    r.montantLettres||'',
-    formatType(r.type||''),
-    r.numero_ordre || r.id || ''
-  ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'));
+  const headers = ['Café','Type','Date','Nom','Prénom','Adresse','CP','Commune','Email','Montant (EUR)','Montant en lettres','Mode de versement','SIREN','N° reçu'];
+  const rows = all.map(r => {
+    const isEnt = r.donType === 'entreprise' || r.id?.startsWith('RE');
+    return [
+      r.cafeName,
+      isEnt ? 'E' : 'P',
+      formatDate(r.date),
+      r.nom||'',
+      r.prenom||'',
+      r.adresse||'',
+      r.cp||'',
+      r.commune||'',
+      r.email||'',
+      String(r.montant||0).replace('.',','),
+      r.montantLettres||'',
+      formatType(r.type||''),
+      isEnt ? (r.entreprise?.siren || '') : '',
+      r.numero_ordre || r.id || ''
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(';');
+  });
 
   const csv = BOM + headers.map(h=>`"${h}"`).join(';') + '\n' + rows.join('\n');
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
