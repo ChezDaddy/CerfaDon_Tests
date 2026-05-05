@@ -895,13 +895,14 @@ async function loadFromSupabase() {
   setOnlineStatus(true);
 }
 
-// Génère le numéro d'ordre : 3 lettres café + année 4 chiffres + rang 6 chiffres (global)
-// Exemple : CAL2026000001
-function generateNumeroOrdre(cafeNom, year) {
+// Génère le numéro d'ordre : 3 lettres café + année + P/E + rang 6 chiffres (global par type)
+// Exemples : CAL2026P000001 / SFL2026E000002
+function generateNumeroOrdre(cafeNom, year, type) {
   const prefix = (cafeNom || '???').replace(/[^A-Za-z]/g, '').substring(0, 3).toUpperCase().padEnd(3, 'X');
+  const letter = type === 'entreprise' ? 'E' : 'P';
   const allReceipts = store.cafes.flatMap(c => c.receipts || []);
-  const rang = allReceipts.length + 1;
-  return prefix + year + String(rang).padStart(6, '0');
+  const rang = allReceipts.filter(r => (r.donType === 'entreprise') === (type === 'entreprise')).length + 1;
+  return prefix + year + letter + String(rang).padStart(6, '0');
 }
 
 // Sauvegarde d'un reçu (insert ou update)
@@ -1591,7 +1592,7 @@ function generateAndPreview() {
   const year = date.substring(0, 4);
   const receipt = { id, prenom, nom, adresse, cp, commune, email, montant, montantLettres, date, type, sent:false, generated:false,
     filename:`Recu fiscal_${cafe.nom}_${dateStr}_${nom} ${prenom}`,
-    numero_ordre: generateNumeroOrdre(cafe.nom, year) };
+    numero_ordre: generateNumeroOrdre(cafe.nom, year, 'particulier') };
 
   const isEnt = receipt.donType === 'entreprise';
   (isEnt ? generateCerfaEntreprisePDF(cafe, receipt) : generateCerfaPDF(cafe, receipt)).then(pdfBytes => {
@@ -2185,7 +2186,7 @@ async function generateAndPreviewEntreprise() {
     generated: false, sent: false,
     filename: `Recu fiscal entreprise_${cafe.nom}_${dateParts}_${denomination}`,
     pdf_path: null,
-    numero_ordre: generateNumeroOrdre(cafe.nom, year),
+    numero_ordre: generateNumeroOrdre(cafe.nom, year, 'entreprise'),
   };
 
   try {
