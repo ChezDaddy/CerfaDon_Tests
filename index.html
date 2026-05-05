@@ -596,7 +596,7 @@
     </div>
     <div class="form-group">
       <label>Description / Nature du don</label>
-      <input type="text" id="ent-description" placeholder="Don à une association" value="Don à une association">
+      <input type="text" id="ent-description" placeholder="Don à une association">
     </div>
     <div class="form-group">
       <label>Mode de versement</label>
@@ -1576,6 +1576,11 @@ function generateAndPreview() {
   const date    = document.getElementById('r-date').value;
   const type    = document.getElementById('r-type').value;
   if (!prenom||!nom||!adresse||!cp||!commune||!email||!montant||!montantLettres||!date) {
+    document.getElementById('modal-error').textContent = '⚠ Veuillez remplir tous les champs obligatoires.';
+    document.getElementById('modal-error').style.display='flex'; return;
+  }
+  if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}$/.test(email)) {
+    document.getElementById('modal-error').textContent = '⚠ Adresse email invalide.';
     document.getElementById('modal-error').style.display='flex'; return;
   }
   document.getElementById('modal-error').style.display='none';
@@ -1957,7 +1962,7 @@ async function generateCerfaEntreprisePDF(cafe, receipt) {
     setField('b15', montant);   // Montant versements €
     setField('b16', '');        // Ligne 1 lettres : vide
     setField('b17', lettres);   // Ligne 2 lettres : toutes lettres (garantit espace)
-    setField('b13', ent.description || 'Don a une association');
+    setField('b13', ent.description || '');
 
     // Mode de versement — coordonnées exactes des CAC2/3/4 :
     // CAC2 Especes  rect(34.888,516.137,42.197,523.446) → centre x=38.5, y_bot=322.1
@@ -2124,7 +2129,7 @@ function openEntrepriseModal() {
   ['ent-denomination','ent-forme','ent-siren','ent-num','ent-rue','ent-cp','ent-commune','ent-montant','ent-montant-lettres'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  document.getElementById('ent-description').value = 'Don à une association';
+  document.getElementById('ent-description').value = '';
   document.getElementById('ent-type').value = 'virement';
   document.getElementById('ent-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('ent-modal-error').style.display = 'none';
@@ -2259,7 +2264,7 @@ if (todayInput) todayInput.value = new Date().toISOString().split('T')[0];
     txt(p2, h2,  30, 491, montant, 9, true);            // Montant versements €
     txt(p2, h2, 200, 502, lettres, 7.5);                // En toutes lettres versements
     // Description (avant "Forme des versements" à y=517)
-    txt(p2, h2,  30, 514, ent.description || 'Don a une association', 7.5);
+    txt(p2, h2,  30, 514, ent.description || '', 7.5);
     // Mode de versement
     // Mode versement: cases □ à y_from_bot≈357 (img_y=878 à 130dpi)
     // x positions: □ Espèces≈30, □ Chèque≈152, □ Virement≈270
